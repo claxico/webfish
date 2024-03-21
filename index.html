@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="css" href="mystyle.css">
+    <link rel="stylesheet" href="mystyle.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>Fish Game</h1>
+
+    <div id = "startGameDiv">
+        <div>
+            <button id = "newGameButton", onclick = "generateGameID()"> New Game </button> 
+            <br>
+            <input id = "gameIdInput", placeholder = "Game ID", oninput = "updateJoinButton()">
+            <button id = "copyButton" style = "width: fit-content", onclick="copyGameId()", hidden = true>Copy</button>
+            <br>
+            <input id = "nameInput", oninput = "updateJoinButton()" placeholder = "Name">
+            <br>
+            <button id = "joinButton", onclick = "joinGame()", disabled = true> Join Game </button> 
+        </div>
+        
+        <h2>Joined Players: </h2>
+        <ul>
+            <li id = "player0"></li>
+            <li id = "player1"></li>
+            <li id = "player2"></li>
+            <li id = "player3"></li>
+        </ul>
+        
+    
+        <button onclick = "startGame()"> Start Game </button>
+    </div>
+
+
+    <!-- all game contents, hidden until game starts -->
+    <div id = "gameContents", style = "height: 80vh; display:none; justify-content:space-between;">
+        <!-- cards, players, etc. -->
+        <div id = "playingField", class = "field">
+            <div, class = "gameFlexBox">
+
+                <button onclick = "declareSet()", id = "name2", class = "name"> </button>
+                
+                <div id = "middleRow" style = "display:flex; justify-content:space-between; align-items:center; width:100%; flex-grow:2">
+                    <button onclick = "askForCard(this)", id = "name1", class = "name"></button>
+                    <div id = "setsDiv", style = "display:flex; justify-content:space-around; gap: 10px"> </div>
+                    <button onclick = "askForCard(this)", id = "name3", class = "name"></button>
+                </div>
+                Selected Card:
+                <div style = height: fit-content>
+                    <select id="rankSelection"></select> &nbsp; of &nbsp; <select id="suitSelection"></select>
+                </div>
+
+                <p id = "scoreBoard", style="height: fit-content; position: absolute; top: 10px; left: 10px; margin: 0px"> Score: 0 - 0 </p>
+
+                <button id="nextTurnButton" onclick = "doNextTurn()", style = "height: fit-content; position: absolute; top: 10px; right: 10px"> Next Turn </button>
+            
+                <div id = "name0" style = "display:flex; justify-content:center; width:100%; overflow:scroll"> </div>
+            </div>
+
+             <!-- log of interactions -->
+            <div class = "gameLog"> 
+                <table id = "gameLogTable", style = "width: 100%; font-size: 16px"> </table>
+            </div>
+        </div>
+    </div>
+</body>
+
+<!-- Include Java Fish -->
+<script src = "Java Fish.js"></script>
+
+<!-- Global Variables -->
+<script> 
+    let thisPlayer = null
+    let joinedGameId = null
+</script>
+
+<!-- HTML functions -->
+<script>
+    function updateJoinButton() {
+        const nameInput = document.getElementById("nameInput")
+        const gameIdInput = document.getElementById("gameIdInput")
+        const joinButton = document.getElementById("joinButton")
+
+        if (nameInput.value.trim() == "" || gameIdInput.value.trim() == "") {
+            joinButton.disabled = true
+        } else if (joinedGameId == gameIdInput.value.trim()) {
+            joinButton.disabled = true
+        } else {
+            joinButton.disabled = false
+        }
+    }
+
+    function copyGameId() {
+        gameIdInput = document.getElementById("gameIdInput")
+        navigator.clipboard.writeText(gameIdInput.value);
+    }
+</script>
+
+<!-- Update functions -->
+<script>
+    // Todo: Based on what you can ask for?
+    function updateCardSelections(game) {
+        const rankSelection = document.getElementById("rankSelection");
+        rankSelection.innerHTML = ""
+        for (let i = 2; i < 15; i++) {
+            const newOption = document.createElement("option")
+            newOption.text = Card.ranks[i]
+            rankSelection.appendChild(newOption)
+        }
+
+        const suitSelection = document.getElementById("suitSelection");
+        suitSelection.innerHTML = ""
+        for (const suit of Card.suits) {
+            const newOption = document.createElement("option")
+            newOption.text = suit
+            suitSelection.appendChild(newOption)
+        }   
+
+    }
+
+    // Show which cards are in your hand, and (todo) how many cards other players have
+    function updateHands(game) {
+
+        document.getElementById("name1").innerText = thisPlayer.opponents[0].name
+        document.getElementById("name2").innerText = thisPlayer.partner.name
+        document.getElementById("name3").innerText = thisPlayer.opponents[1].name
+    
+        const handDiv = document.getElementById("name0")
+        handDiv.innerHTML = ""
+        
+        for (let i = 0; i < thisPlayer.hand.length; i++) {
+            let card = document.createElement("div")
+            card.className = "card"
+            card.innerText = thisPlayer.hand[i].symbol
+            handDiv.appendChild(card)
+            if (i == thisPlayer.hand.length-1) {
+                card.style.margin = "0px";
+            }
+        }
+        
+    }
+
+    // Updates whether "Ask" or "Next Turn" is divisble
+    function updateVisibleButtons(game) {
+        if (game.currentPlayer != undefined && game.currentPlayer.name == thisPlayer.name) {
+            document.getElementById("name1").disabled = false
+            document.getElementById("name3").disabled = false
+        } else {
+            document.getElementById("name1").disabled = true
+            document.getElementById("name3").disabled = true
+        }
+
+        if (game.currentPlayer.isComputer) {
+            document.getElementById("nextTurnButton").disabled = false
+        } else {
+            document.getElementById("nextTurnButton").disabled = true
+        }
+    }
+
+    function updateLogs(game) {
+        const logTable = document.getElementById("gameLogTable")
+        logTable.innerHTML = ""
+
+        for (const log of game.logs) {
+            let row = logTable.insertRow(0);
+            let cell = row.insertCell(0)
+            cell.innerHTML = `${log.askerName}: ${log.cardSymbol}? <br> ${log.targetName}: ${log.result}`
+        }
+    }
+
+</script>
+
+<!-- Input functions -->
+<script>
+
+    // Gets target based on selection
+    function getTarget(name) {
+        for (const player of players) {
+            if (player.name == name) {
+                return player
+            }
+        }
+    }
+
+    // Gets card based on selection
+    function getCard() {
+        let rank = document.getElementById("rankSelection").selectedIndex + 2
+        let suit = document.getElementById("suitSelection").selectedIndex
+
+        const theCard = new Card(rank, suit)
+
+        for (const card of deck) {
+            if (card.equals(theCard)) return card
+        }
+    }
+</script>
+
+<script>
+
+    function askForCard(button) {
+        targetName = button.textContent
+        card = getCard()
+
+        const payload = {
+            "method": "askForCard",
+            "asker": document.getElementById("nameInput").value,
+            "targetName": targetName,
+            "card": card,
+            "gameId": gameId
+        }
+
+        ws.send(JSON.stringify(payload))
+    }
+
+
+    function doNextTurn() {
+
+        const payload = {
+            "method": "doComputerTurn",
+            "gameId": gameId
+        }
+
+        ws.send(JSON.stringify(payload))
+
+    }
+
+    function declareSet() {
+        const card = getCard()
+
+        const payload = {
+
+            "method": "declareSet",
+            "gameId": gameId,
+            "declarerName": thisPlayer.name,
+            "card": card
+        }
+
+        ws.send(JSON.stringify(payload))
+    }
+
+</script>
+
+<script>
+    function updateSets(game) {
+        let setsDiv = document.getElementById("setsDiv")
+        setsDiv.innerHTML = ""
+
+
+        for (const card of game.sets) {
+            
+            let setDiv = document.createElement("div")
+            setDiv.style = "position:relative; width: 100px; height: 100px"
+
+            for (const c of card.set) {
+                let cardDiv = document.createElement("div")
+                cardDiv.classList.add("smallCard")
+                const rotateAmount = -15 + Math.floor(Math.random() * 30)
+                cardDiv.style.transform = `rotate(${rotateAmount}deg)`
+                cardDiv.innerText = c.symbol
+                setDiv.appendChild(cardDiv)
+            }
+
+            setsDiv.appendChild(setDiv)
+
+            document.getElementById("scoreBoard").textContent = `Score: ${thisPlayer.points + thisPlayer.partner.points} - ${thisPlayer.opponents[0].points + thisPlayer.opponents[1].points}`
+        }
+
+    }
+
+</script>
+
+<script>
+    let ws = new WebSocket("ws://localhost:9090")
+    let clientId = null
+    let gameId = null
+
+    const reviver = function(key, value) {
+
+
+        if (key == 0) {
+            console.log(key, value)
+        }
+
+        if (value.hand !== undefined) { // It's a player
+
+            let player = new Player(value.name)
+            player.hand = value.hand
+            player.points = value.points
+            player.cardStatusDictionary = value.cardStatusDictionary
+            player.isComputer = value.isComputer
+
+            return player
+            
+        } else if (value.rank !== undefined) { // It's a card
+            
+            let card = new Card(value.rank, value.suit)
+            return card
+
+        }
+
+        return value;
+    }
+
+    const replacerFunc = () => {
+        // const visited = new WeakSet();
+        return (key, value) => {
+        if (value instanceof jf.Player) { 
+
+            if (typeof(value.partner) === "object") {
+                value.partner = value.partner.name
+                value.opponents[0] = value.opponents[0].name
+                value.opponents[1] = value.opponents[1].name
+            }
+            
+        }
+        return value;
+        };
+    };
+
+
+
+    function generateGameID() {
+        document.getElementById("copyButton").hidden = false
+        document.getElementById("gameIdInput").readOnly = true
+
+
+
+        const payload = {
+            "method": "createGame",
+            "clientId": clientId
+        }
+        ws.send(JSON.stringify(payload))
+    }
+
+    function joinGame() {
+        // If not already in a game, read text in from box
+
+        const gameIdInput = document.getElementById("gameIdInput")
+        const nameInput = document.getElementById("nameInput")
+
+        if (gameIdInput.value != "") {
+            gameId = gameIdInput.value
+            name = nameInput.value
+        }
+
+        gameIdInput.readOnly = true
+        nameInput.readOnly = true
+
+        document.getElementById("newGameButton").disabled = true
+        
+        joinedGameId = gameId
+
+        console.log(gameId)
+
+        updateJoinButton()
+
+        // Join game
+        const payload = {
+            "method": "join",
+            "clientId": clientId,
+            "name": name,
+            "gameId": gameId
+        }
+        ws.send(JSON.stringify(payload))
+    }
+
+    function startGame() {
+        const payload = {
+            "method": "startGame",
+            "gameId": gameId
+        }
+        ws.send(JSON.stringify(payload));
+
+        document.getElementById("startGameDiv").style.display = "none"
+    }
+
+    function updateGame(game) {
+        updateVisibleButtons(game)
+        updateHands(game)
+        updateLogs(game)
+        updateSets(game)
+    }
+
+    function setUpGame(game) {
+        document.getElementById("gameContents").style.display = "flex"
+        document.getElementById("gameLogTable").innerHTML = ""
+
+        updateCardSelections(game)
+
+        for (const player of game.players) {
+            if (player.name == document.getElementById("nameInput").value) {
+                thisPlayer = player
+            }
+        }
+
+    }
+
+    ws.onmessage = message => {
+        console.log(message)
+        console.log(message.data)
+        const response = JSON.parse(message.data, reviver);
+
+        if (response.game !== undefined) {
+            for (const player of response.game.players) {
+                player.getPartners(response.game.players)
+    
+                if (player.name == document.getElementById("nameInput").value) {
+                    thisPlayer = player
+                }
+            }
+        }
+
+        switch (response.method) {
+            case "gameCreated":
+                document.getElementById("gameIdInput").value = response.game.id;
+                updateJoinButton()
+                break;
+            case "connect":
+                clientId = response.clientId;
+                break;
+            case "playerJoined":
+                const game = response.game;
+                let nameList = game.clients.map(client => client.name);
+                for (let i = 0; i < nameList.length; i++) {
+                    document.getElementById("player" + i).textContent = nameList[i]
+                }
+                break;
+            case "gameStarted":
+                setUpGame(response.game)
+                updateGame(response.game)
+                break;
+            case "update":
+                updateGame(response.game)
+                break;
+        }
+
+
+
+    }
+
+
+
+</script>
