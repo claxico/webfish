@@ -217,28 +217,35 @@ class Player {
 
     declareSet(card, players) {
         let goodDeclaration = true
+        let validDeclaration = false
 
         // Go through all cards of deck
         for (const c of card.set) {
             if (this.hasCard(c)) {
                 this.removeCard(c)
+                validDeclaration = true
             } else if (this.partner.hasCard(c)) {
                 this.partner.removeCard(c)
+                validDeclaration = true
             } else {
                 goodDeclaration = false
             }
         }
 
-        if (goodDeclaration) {
-            this.points += 1
-        } else {
-            this.opponents[0].points += 1
-            for (const c of card.set) {
-                for (let player of players) player.removeCard(c)
+        if (validDeclaration) {
+            if (goodDeclaration) {
+                this.points += 1
+            } else {
+                this.opponents[0].points += 1
+                for (const c of card.set) {
+                    for (let player of players) player.removeCard(c)
+                }
             }
         }
+
+       
         
-        return
+        return validDeclaration
 
     }
 

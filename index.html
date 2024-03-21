@@ -328,7 +328,6 @@
         document.getElementById("gameIdInput").readOnly = true
 
 
-
         const payload = {
             "method": "createGame",
             "clientId": clientId
@@ -375,7 +374,6 @@
         }
         ws.send(JSON.stringify(payload));
 
-        document.getElementById("startGameDiv").style.display = "none"
     }
 
     function updateGame(game) {
@@ -388,6 +386,8 @@
     function setUpGame(game) {
         document.getElementById("gameContents").style.display = "flex"
         document.getElementById("gameLogTable").innerHTML = ""
+
+        document.getElementById("startGameDiv").style.display = "none"
 
         updateCardSelections(game)
 

@@ -83,7 +83,8 @@ function createGame(result) {
         "sets": [],
         "currentPlayer": undefined,
         "starterClientId": result.clientId,
-        "owner": ""
+        "owner": "",
+        "started": false
     }
 
     // Add game id and metadata to game dictionary
@@ -120,6 +121,13 @@ function joinGame(result, connection) {
         }
         connection.send(JSON.stringify(payload));
         return;
+    } else if (game.started) {
+        const payload = {
+            "method": "alert",
+            "message": "Sorry, this game already started!"
+        }
+        connection.send(JSON.stringify(payload));
+        return;
     }
     
     // Add client to game 
@@ -144,13 +152,12 @@ function startGame(game) {
 
     let isAIList = nameList.map(function (name) { return false; })
     let computerNames = ["Conan", "Ana", "Hasan"]
-    
+
     while (nameList.length < 4) {
         const name = getComputerName(computerNames)
         nameList.push(name)
         isAIList.push(true)
     }
-
 
     game.players = jf.setUpPlayers(nameList, isAIList)
 
@@ -159,6 +166,8 @@ function startGame(game) {
     jf.dealCards(game.players)
 
     console.log("players:",game.players)
+
+    game.started = true
 
     const payload = {
         "method": "gameStarted",
@@ -225,9 +234,13 @@ function doComputerTurn(game) {
 function declareSet(game, declarerName, card) {
 
     declarer = game.players.find(player => player.name == declarerName)
-    declarer.declareSet(card, game.players)
+    let validDeclaration = declarer.declareSet(card, game.players)
 
-    game.sets.push(card)
+    if (validDeclaration) {
+        game.sets.push(card)
+    }
+
+   
 
     updateGame(game)
    
